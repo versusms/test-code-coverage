@@ -1,0 +1,2131 @@
+
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+		<style>
+			body {
+				background: black;
+				color: rgb(80, 80, 80);
+			}
+			body, pre, #legend span {
+				font-family: Menlo, monospace;
+				font-weight: bold;
+			}
+			#topbar {
+				background: black;
+				position: fixed;
+				top: 0; left: 0; right: 0;
+				height: 42px;
+				border-bottom: 1px solid rgb(80, 80, 80);
+			}
+			#content {
+				margin-top: 50px;
+			}
+			#nav, #legend {
+				float: left;
+				margin-left: 10px;
+			}
+			#legend {
+				margin-top: 12px;
+			}
+			#nav {
+				margin-top: 10px;
+			}
+			#legend span {
+				margin: 0 5px;
+			}
+			.cov0 { color: rgb(192, 0, 0) }
+.cov1 { color: rgb(128, 128, 128) }
+.cov2 { color: rgb(116, 140, 131) }
+.cov3 { color: rgb(104, 152, 134) }
+.cov4 { color: rgb(92, 164, 137) }
+.cov5 { color: rgb(80, 176, 140) }
+.cov6 { color: rgb(68, 188, 143) }
+.cov7 { color: rgb(56, 200, 146) }
+.cov8 { color: rgb(44, 212, 149) }
+.cov9 { color: rgb(32, 224, 152) }
+.cov10 { color: rgb(20, 236, 155) }
+
+		</style>
+	</head>
+	<body>
+		<div id="topbar">
+			<div id="nav">
+				<select id="files">
+				
+				<option value="file0">bitbucket.manperi.com/olymp/estream/config.go (93.5%)</option>
+				
+				<option value="file1">bitbucket.manperi.com/olymp/estream/consumer.go (77.2%)</option>
+				
+				<option value="file2">bitbucket.manperi.com/olymp/estream/consumer_group.go (56.2%)</option>
+				
+				<option value="file3">bitbucket.manperi.com/olymp/estream/consumer_handler.go (12.5%)</option>
+				
+				<option value="file4">bitbucket.manperi.com/olymp/estream/consumer_handler_gen.go (13.3%)</option>
+				
+				<option value="file5">bitbucket.manperi.com/olymp/estream/debug.go (0.0%)</option>
+				
+				<option value="file6">bitbucket.manperi.com/olymp/estream/encoder.go (100.0%)</option>
+				
+				<option value="file7">bitbucket.manperi.com/olymp/estream/event.go (0.0%)</option>
+				
+				<option value="file8">bitbucket.manperi.com/olymp/estream/fallback.go (76.4%)</option>
+				
+				<option value="file9">bitbucket.manperi.com/olymp/estream/metrics.go (85.7%)</option>
+				
+				<option value="file10">bitbucket.manperi.com/olymp/estream/producer.go (69.1%)</option>
+				
+				<option value="file11">bitbucket.manperi.com/olymp/estream/topic.go (100.0%)</option>
+				
+				</select>
+			</div>
+			<div id="legend">
+				<span>not tracked</span>
+			
+				<span class="cov0">not covered</span>
+				<span class="cov8">covered</span>
+			
+			</div>
+		</div>
+		<div id="content">
+		
+		<pre class="file" id="file0" style="display: none">package estream
+
+import (
+        "fmt"
+        "os"
+        "time"
+
+        "github.com/Shopify/sarama"
+)
+
+type (
+        // Config for estream
+        Config struct {
+                Addresses []string       `yaml:"addresses"`
+                FallBack  FallbackConfig `yaml:"fallback"`
+        }
+
+        // FallbackConfig is fallback settings
+        FallbackConfig struct {
+                File string `yaml:"file"`
+                // ResendTimeout is timeout of send message to fallback file
+                // may be reached when waiting complete resend job
+                ResendTimeout   time.Duration `yaml:"resend_timeout"`
+                ResendInterval  time.Duration `yaml:"resend_interval"`
+                ResendBatchSize int           `yaml:"resend_batch_size"`
+                // QueueSize define buffer size for internal channel
+                // the buffer used to not makes producer delays on resend process
+                QueueSize int `json:"queue_size"`
+        }
+)
+
+// NewSaramaConfig returns default sarama cluster config
+func NewSaramaConfig() *sarama.Config <span class="cov8" title="1">{
+        cfg := sarama.NewConfig()
+        cfg.Version = sarama.V2_0_0_0
+
+        var err error
+        cfg.ClientID, err = os.Hostname()
+        if err != nil </span><span class="cov0" title="0">{
+                cfg.ClientID = fmt.Sprintf("undefined_%d", time.Now().Unix())
+        }</span>
+
+        <span class="cov8" title="1">cfg.ChannelBufferSize = 1024
+
+        cfg.Net.DialTimeout = 5 * time.Second
+        cfg.Net.ReadTimeout = 10 * time.Second
+        cfg.Net.WriteTimeout = 5 * time.Second
+
+        cfg.Consumer.Offsets.Initial = sarama.OffsetNewest
+        cfg.Consumer.Return.Errors = true
+
+        cfg.Producer.RequiredAcks = sarama.WaitForAll
+        cfg.Producer.Return.Successes = true
+        cfg.Producer.Return.Errors = true
+        cfg.Producer.Timeout = 5 * time.Second
+        cfg.Producer.Retry.Max = 5
+        cfg.Producer.Retry.BackoffFunc = func(retries, maxRetries int) time.Duration </span><span class="cov8" title="1">{
+                timeout := 500 * time.Millisecond / time.Duration(maxRetries)
+                if retries != 0 </span><span class="cov8" title="1">{
+                        timeout *= time.Duration(retries)
+                }</span>
+                <span class="cov8" title="1">return timeout</span>
+        }
+
+        <span class="cov8" title="1">return cfg</span>
+}
+
+func setFallbackDefaults(cfg *FallbackConfig) <span class="cov8" title="1">{
+        if cfg.ResendInterval == 0 </span><span class="cov0" title="0">{
+                cfg.ResendInterval = 10 * time.Minute
+        }</span>
+        <span class="cov8" title="1">if cfg.ResendBatchSize == 0 </span><span class="cov8" title="1">{
+                cfg.ResendBatchSize = 100
+        }</span>
+        <span class="cov8" title="1">if cfg.QueueSize == 0 </span><span class="cov8" title="1">{
+                cfg.QueueSize = 1024
+        }</span>
+        <span class="cov8" title="1">if cfg.ResendTimeout == 0 </span><span class="cov8" title="1">{
+                cfg.ResendTimeout = 5 * time.Second
+        }</span>
+}
+</pre>
+		
+		<pre class="file" id="file1" style="display: none">package estream
+
+import (
+        "fmt"
+        "time"
+
+        "github.com/Shopify/sarama"
+        "github.com/chapsuk/wait"
+        "github.com/sirupsen/logrus"
+)
+
+var (
+        defaultConsumerNewClientFunc = func(addrs []string, cfg *sarama.Config) (sarama.Client, error) <span class="cov8" title="1">{
+                return sarama.NewClient(addrs, cfg)
+        }</span>
+
+        defaultConsumerErrorHandler = func(err error) <span class="cov8" title="1">{
+                if err != nil </span><span class="cov8" title="1">{
+                        logrus.Errorf("Kafka: consumer error: %s", err.Error())
+                }</span>
+        }
+)
+
+// ConsumerOpt allows customize consumer
+type ConsumerOpt func(c *Consumer)
+
+// WithClientFuncConsumerOpt sets factory func for create kafka client, may be used for redefine sarama config settings
+func WithClientFuncConsumerOpt(f func(addrs []string, cfg *sarama.Config) (sarama.Client, error)) ConsumerOpt <span class="cov8" title="1">{
+        return func(c *Consumer) </span><span class="cov8" title="1">{
+                c.clientFunc = f
+        }</span>
+}
+
+// WithConfigConsumerOpt sets config for consumer
+func WithConfigConsumerOpt(cfg *sarama.Config) ConsumerOpt <span class="cov8" title="1">{
+        return func(c *Consumer) </span><span class="cov8" title="1">{
+                c.config = cfg
+        }</span>
+}
+
+// WithErrorHandlerConsumerOpt sets error handler for consumers
+func WithErrorHandlerConsumerOpt(f func(error)) ConsumerOpt <span class="cov8" title="1">{
+        return func(c *Consumer) </span><span class="cov8" title="1">{
+                c.errhan = f
+        }</span>
+}
+
+// Consumer allows consume events for single consumer, supporting time offsets
+type Consumer struct {
+        addrs          []string
+        config         *sarama.Config
+        errhan         func(error)
+        client         sarama.Client
+        consumer       sarama.Consumer
+        partsConsumers []sarama.PartitionConsumer
+        clientFunc     func(addrs []string, cfg *sarama.Config) (sarama.Client, error)
+        handlers       map[Topic]*topicConsumer
+        wg             wait.Group
+}
+
+// NewConsumer returns consumer instance
+func NewConsumer(cfg Config, opts ...ConsumerOpt) (*Consumer, error) <span class="cov8" title="1">{
+        c := &amp;Consumer{
+                addrs:      cfg.Addresses,
+                config:     NewSaramaConfig(),
+                errhan:     defaultConsumerErrorHandler,
+                clientFunc: defaultConsumerNewClientFunc,
+                handlers:   make(map[Topic]*topicConsumer),
+        }
+
+        for _, opt := range opts </span><span class="cov8" title="1">{
+                opt(c)
+        }</span>
+
+        <span class="cov8" title="1">if c.clientFunc == nil </span><span class="cov8" title="1">{
+                return nil, fmt.Errorf("missing new client func")
+        }</span>
+
+        <span class="cov8" title="1">if c.config == nil </span><span class="cov8" title="1">{
+                return nil, fmt.Errorf("missing consumer config")
+        }</span>
+
+        <span class="cov8" title="1">if c.errhan == nil </span><span class="cov8" title="1">{
+                return nil, fmt.Errorf("missing error handler")
+        }</span>
+
+        <span class="cov8" title="1">var err error
+        c.client, err = c.clientFunc(cfg.Addresses, c.config)
+        if err != nil </span><span class="cov8" title="1">{
+                return nil, fmt.Errorf("create kafka consumer: %v", err)
+        }</span>
+
+        <span class="cov8" title="1">c.consumer, err = sarama.NewConsumerFromClient(c.client)
+        if err != nil </span><span class="cov8" title="1">{
+                return nil, fmt.Errorf("create kafka consumer: %v", err)
+        }</span>
+
+        <span class="cov8" title="1">return c, nil</span>
+}
+
+// Consume starts consumers
+func (c *Consumer) Consume() error <span class="cov8" title="1">{
+        for topic, topicHandler := range c.handlers </span><span class="cov8" title="1">{
+                if err := c.consumeTopic(topic, topicHandler); err != nil </span><span class="cov0" title="0">{
+                        return fmt.Errorf("start consumer for topic %s timeOffset %s: %v", topic, topicHandler.minTimeOffset, err)
+                }</span>
+        }
+        <span class="cov8" title="1">return nil</span>
+}
+
+// Close stops all partition consumers, waits until all workers stooped,
+// closes consumer and client
+func (c *Consumer) Close() error <span class="cov8" title="1">{
+        for _, pc := range c.partsConsumers </span><span class="cov8" title="1">{
+                if err := pc.Close(); err != nil </span><span class="cov8" title="1">{
+                        c.errhan(fmt.Errorf("stop partition consumer: %v", err))
+                }</span>
+        }
+        <span class="cov8" title="1">c.wg.Wait()
+
+        if err := c.consumer.Close(); err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("close consumer: %v", err)
+        }</span>
+        <span class="cov8" title="1">if err := c.client.Close(); err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("close kafka client: %v", err)
+        }</span>
+
+        <span class="cov8" title="1">return nil</span>
+}
+
+// AddHandler adds handler for event
+func (c *Consumer) AddHandler(eventName string, h saramaHandler, opts ...ConsumerHandlerOpt) error <span class="cov8" title="1">{
+        t, ok := eventTopic[eventName]
+        if !ok </span><span class="cov0" title="0">{
+                return ErrUnsupportedEvent
+        }</span>
+
+        <span class="cov8" title="1">tc := timeOffsetConsumer{
+                eventName:  eventName,
+                timeOffset: time.Time{},
+                handler:    h.saramaHandler(),
+        }
+
+        for _, opt := range opts </span><span class="cov0" title="0">{
+                opt(&amp;tc)
+        }</span>
+
+        <span class="cov8" title="1">if _, ok := c.handlers[t]; !ok </span><span class="cov8" title="1">{
+                c.handlers[t] = &amp;topicConsumer{}
+        }</span>
+
+        <span class="cov8" title="1">c.handlers[t].addHandler(tc)
+
+        return nil</span>
+}
+
+func (c *Consumer) consumeTopic(topic Topic, tconsumer *topicConsumer) error <span class="cov8" title="1">{
+        parts, err := c.client.Partitions(topic.String())
+        if err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("get topic %s partitions: %v", topic, err)
+        }</span>
+
+        <span class="cov8" title="1">if len(parts) == 0 </span><span class="cov0" title="0">{
+                return fmt.Errorf("no one partition for topic: %s", topic)
+        }</span>
+
+        <span class="cov8" title="1">for _, part := range parts </span><span class="cov8" title="1">{
+                offset := c.config.Consumer.Offsets.Initial
+                if !tconsumer.minTimeOffset.IsZero() </span><span class="cov0" title="0">{
+                        offset, err = c.client.GetOffset(topic.String(), part, tconsumer.minTimeOffset.UnixNano()/int64(time.Millisecond))
+                        if err != nil </span><span class="cov0" title="0">{
+                                return fmt.Errorf("get topic %s partition %d time: %s offset: %v",
+                                        topic.String(), part, tconsumer.minTimeOffset, err)
+                        }</span>
+
+                        // offset unexists, consume from newset and handler skip not valid messages
+                        <span class="cov0" title="0">if offset == -1 </span><span class="cov0" title="0">{
+                                offset = sarama.OffsetNewest
+                        }</span>
+                }
+
+                <span class="cov8" title="1">pc, err := c.consumer.ConsumePartition(topic.String(), part, offset)
+                if err != nil </span><span class="cov0" title="0">{
+                        return fmt.Errorf("consume topic %s partition %d offset %d: %v", topic.String(), part, offset, err)
+                }</span>
+
+                <span class="cov8" title="1">c.consumePartition(topic.String(), part, pc, tconsumer.handle)</span>
+        }
+
+        <span class="cov8" title="1">return nil</span>
+}
+
+func (c *Consumer) consumePartition(
+        topic string,
+        part int32,
+        pc sarama.PartitionConsumer,
+        handler func(msg *sarama.ConsumerMessage) error,
+) <span class="cov8" title="1">{
+        c.partsConsumers = append(c.partsConsumers, pc)
+
+        c.wg.Add(func() </span><span class="cov8" title="1">{
+                for msg := range pc.Messages() </span><span class="cov0" title="0">{
+                        start := time.Now()
+
+                        err := handler(msg)
+                        if err != nil </span><span class="cov0" title="0">{
+                                c.errhan(fmt.Errorf("kafka: handle topic %s partition %d : %v", topic, part, err))
+                        }</span>
+
+                        <span class="cov0" title="0">consumerHandlerHistogram.
+                                WithLabelValues(topic, errLabelValue(err)).
+                                Observe(time.Since(start).Seconds())</span>
+                }
+        })
+
+        <span class="cov8" title="1">if c.config.Consumer.Return.Errors </span><span class="cov8" title="1">{
+                c.wg.Add(func() </span><span class="cov8" title="1">{
+                        for err := range pc.Errors() </span><span class="cov8" title="1">{
+                                c.errhan(fmt.Errorf("kafka: consume topic %s partition %d : %v", topic, part, err))
+                        }</span>
+                })
+        }
+}
+</pre>
+		
+		<pre class="file" id="file2" style="display: none">package estream
+
+import (
+        "context"
+        "encoding/json"
+        "fmt"
+        "time"
+
+        "bitbucket.manperi.com/olymp/estream/event"
+
+        "github.com/Shopify/sarama"
+        "github.com/chapsuk/wait"
+        "github.com/sirupsen/logrus"
+)
+
+var (
+        defaultConsumerGroupCreateConsumerFunc NewConsumerGroupFunc = func(addrs []string, group string, cfg *sarama.Config) (sarama.ConsumerGroup, error) <span class="cov8" title="1">{
+                return sarama.NewConsumerGroup(addrs, group, cfg)
+        }</span>
+
+        defaultConsumerGroupErrorHandler = func(err error) <span class="cov8" title="1">{
+                if err != nil </span><span class="cov8" title="1">{
+                        logrus.Errorf("Kafka: consumer error: %s", err.Error())
+                }</span>
+        }
+)
+
+// NewConsumerGroupFunc must creates sarama consumer group
+type NewConsumerGroupFunc func(addrs []string, group string, cfg *sarama.Config) (sarama.ConsumerGroup, error)
+
+// ConsumerGroupOpt allows customize consumer group
+type ConsumerGroupOpt func(*ConsumerGroup)
+
+// WithConfigConsumerGroupOpt set sarama config for consumer group
+func WithConfigConsumerGroupOpt(cfg *sarama.Config) ConsumerGroupOpt <span class="cov8" title="1">{
+        return func(g *ConsumerGroup) </span><span class="cov8" title="1">{
+                g.config = cfg
+        }</span>
+}
+
+// WithGroupFuncConsumerGroupOpt sets factory func for create sarama consumer group
+func WithGroupFuncConsumerGroupOpt(f NewConsumerGroupFunc) ConsumerGroupOpt <span class="cov8" title="1">{
+        return func(g *ConsumerGroup) </span><span class="cov8" title="1">{
+                g.groupFunc = f
+        }</span>
+}
+
+// WithErrorHandlerConsumerGroupOpt sets error handler func
+func WithErrorHandlerConsumerGroupOpt(f func(err error)) ConsumerGroupOpt <span class="cov8" title="1">{
+        return func(g *ConsumerGroup) </span><span class="cov8" title="1">{
+                g.errhan = f
+        }</span>
+}
+
+// ConsumerGroup provides access to streams
+type ConsumerGroup struct {
+        addrs     []string
+        groupName string
+        config    *sarama.Config
+        errhan    func(error)
+        group     sarama.ConsumerGroup
+        groupFunc NewConsumerGroupFunc
+
+        wg       *wait.Group
+        topics   []string
+        handlers map[string]map[string][]rawMessageHandler
+
+        closed chan struct{}
+}
+
+// NewConsumerGroup returns new consumer group instance
+func NewConsumerGroup(cfg Config, group string, opts ...ConsumerGroupOpt) (*ConsumerGroup, error) <span class="cov8" title="1">{
+        g := &amp;ConsumerGroup{
+                addrs:     cfg.Addresses,
+                groupName: group,
+                config:    NewSaramaConfig(),
+                errhan:    defaultConsumerGroupErrorHandler,
+                groupFunc: defaultConsumerGroupCreateConsumerFunc,
+                handlers:  make(map[string]map[string][]rawMessageHandler),
+                closed:    make(chan struct{}),
+                wg:        new(wait.Group),
+        }
+
+        for _, opt := range opts </span><span class="cov8" title="1">{
+                opt(g)
+        }</span>
+
+        <span class="cov8" title="1">if g.groupFunc == nil </span><span class="cov8" title="1">{
+                return nil, fmt.Errorf("missing create kafka consumer group func")
+        }</span>
+
+        <span class="cov8" title="1">if g.config == nil </span><span class="cov8" title="1">{
+                return nil, fmt.Errorf("missing config")
+        }</span>
+
+        <span class="cov8" title="1">if g.errhan == nil </span><span class="cov8" title="1">{
+                return nil, fmt.Errorf("missing error handler")
+        }</span>
+
+        <span class="cov8" title="1">if len(group) == 0 </span><span class="cov8" title="1">{
+                return nil, fmt.Errorf("group name must not be empty")
+        }</span>
+
+        <span class="cov8" title="1">var err error
+        g.group, err = g.groupFunc(cfg.Addresses, group, g.config)
+        if err != nil </span><span class="cov8" title="1">{
+                return nil, fmt.Errorf("create consumer group: %v", err)
+        }</span>
+
+        <span class="cov8" title="1">if g.errhan != nil </span><span class="cov8" title="1">{
+                g.wg.Add(g.serveErrors)
+        }</span>
+
+        <span class="cov8" title="1">return g, nil</span>
+}
+
+// AddHandler add handler for event
+func (g *ConsumerGroup) AddHandler(eventName string, h saramaHandler) error <span class="cov8" title="1">{
+        t, ok := eventTopic[eventName]
+        if !ok </span><span class="cov0" title="0">{
+                return ErrUnsupportedEvent
+        }</span>
+
+        <span class="cov8" title="1">if _, ok := g.handlers[t.String()]; !ok </span><span class="cov8" title="1">{
+                g.handlers[t.String()] = make(map[string][]rawMessageHandler)
+        }</span>
+
+        <span class="cov8" title="1">g.handlers[t.String()][eventName] = append(g.handlers[t.String()][eventName], h.saramaHandler())
+        g.topics = append(g.topics, t.String())
+
+        return nil</span>
+}
+
+// Close closes consumer group and wait error channel completely handeled
+func (g ConsumerGroup) Close() error <span class="cov8" title="1">{
+        select </span>{
+        case &lt;-g.closed:<span class="cov0" title="0">
+                return fmt.Errorf("already closed")</span>
+        default:<span class="cov8" title="1"></span>
+        }
+
+        <span class="cov8" title="1">close(g.closed)
+        err := g.group.Close()
+        g.wg.Wait()
+        return err</span>
+}
+
+// Consume starts consume topics
+func (g ConsumerGroup) Consume() <span class="cov0" title="0">{
+        // using loop for re-create session when new member join to group
+        for </span><span class="cov0" title="0">{
+                select </span>{
+                case &lt;-g.closed:<span class="cov0" title="0">
+                        return</span>
+                default:<span class="cov0" title="0"></span>
+                }
+
+                <span class="cov0" title="0">if err := g.group.Consume(context.Background(), g.topics, g); err != nil </span><span class="cov0" title="0">{
+                        g.errhan(err)
+                }</span>
+        }
+}
+
+func (g ConsumerGroup) serveErrors() <span class="cov8" title="1">{
+        for err := range g.group.Errors() </span><span class="cov8" title="1">{
+                g.errhan(err)
+        }</span>
+}
+
+// ConsumeClaim serve single partition of topic
+func (g ConsumerGroup) ConsumeClaim(sess sarama.ConsumerGroupSession, claim sarama.ConsumerGroupClaim) error <span class="cov0" title="0">{
+        logrus.Infof("Kafka: start serve topic: %s partition: %d", claim.Topic(), claim.Partition())
+
+        eventHandlers, ok := g.handlers[claim.Topic()]
+        if !ok </span><span class="cov0" title="0">{
+                return fmt.Errorf("missing handler for topic: %s", claim.Topic())
+        }</span>
+
+        <span class="cov0" title="0">for msg := range claim.Messages() </span><span class="cov0" title="0">{
+                start := time.Now()
+
+                var cevent consumerEvent
+                err := json.Unmarshal(msg.Value, &amp;cevent)
+                if err != nil </span><span class="cov0" title="0">{
+                        return fmt.Errorf("unmarshal estream event: %v", err)
+                }</span>
+
+                <span class="cov0" title="0">handlers, ok := eventHandlers[cevent.EventName]
+                if !ok </span><span class="cov0" title="0">{
+                        // skip events without handlers
+                        // todo: skip metrics
+                        continue</span>
+                }
+
+                <span class="cov0" title="0">meta := event.Meta{
+                        EventName: cevent.EventName,
+                        Timestamp: msg.Timestamp.Unix(),
+                        UID:       uidByMessage(msg),
+                }
+
+                for _, h := range handlers </span><span class="cov0" title="0">{
+                        err := h(meta, cevent.Payload)
+                        if err != nil </span><span class="cov0" title="0">{
+                                sess.MarkMessage(msg, "error")
+                                g.errhan(fmt.Errorf("handle %s topic: %v", msg.Topic, err))
+                                continue</span>
+                        }
+                }
+
+                <span class="cov0" title="0">sess.MarkMessage(msg, "ok")
+
+                consumerGroupHandlerHistogram.
+                        WithLabelValues(g.groupName, msg.Topic, cevent.EventName).
+                        Observe(time.Since(start).Seconds())</span>
+        }
+
+        <span class="cov0" title="0">return nil</span>
+}
+
+// Setup resets offsets if defined
+func (g ConsumerGroup) Setup(sess sarama.ConsumerGroupSession) error <span class="cov0" title="0">{
+        return nil
+}</span>
+
+// Cleanup do nothing
+func (g ConsumerGroup) Cleanup(sess sarama.ConsumerGroupSession) error <span class="cov0" title="0">{
+        return nil
+}</span>
+</pre>
+		
+		<pre class="file" id="file3" style="display: none">package estream
+
+import (
+        "encoding/json"
+        "time"
+
+        "bitbucket.manperi.com/olymp/estream/event"
+
+        "github.com/Shopify/sarama"
+        "github.com/sirupsen/logrus"
+)
+
+type rawMessageHandler func(event.Meta, json.RawMessage) error
+
+type saramaHandler interface {
+        saramaHandler() rawMessageHandler
+}
+
+type timeOffsetConsumer struct {
+        timeOffset time.Time
+        eventName  string
+        handler    rawMessageHandler
+}
+
+// ConsumerHandlerOpt is consumer handler options
+type ConsumerHandlerOpt func(*timeOffsetConsumer)
+
+// WithTimeOffsetConsumerHandlerOpt sets timeoffset for consumer handler
+func WithTimeOffsetConsumerHandlerOpt(timeOffset time.Time) ConsumerHandlerOpt <span class="cov0" title="0">{
+        return func(t *timeOffsetConsumer) </span><span class="cov0" title="0">{
+                t.timeOffset = timeOffset
+        }</span>
+}
+
+type topicConsumer struct {
+        minTimeOffset time.Time
+        handlers      []timeOffsetConsumer
+}
+
+func (t *topicConsumer) addHandler(h timeOffsetConsumer) <span class="cov8" title="1">{
+        t.handlers = append(t.handlers, h)
+
+        if h.timeOffset.IsZero() </span><span class="cov8" title="1">{
+                return
+        }</span>
+
+        <span class="cov0" title="0">if t.minTimeOffset.IsZero() || h.timeOffset.Before(t.minTimeOffset) </span><span class="cov0" title="0">{
+                t.minTimeOffset = h.timeOffset
+        }</span>
+}
+
+func (t *topicConsumer) handle(msg *sarama.ConsumerMessage) error <span class="cov0" title="0">{
+        var cevent consumerEvent
+        err := json.Unmarshal(msg.Value, &amp;cevent)
+        if err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
+
+        <span class="cov0" title="0">meta := event.Meta{
+                EventName: cevent.EventName,
+                Timestamp: msg.Timestamp.Unix(),
+                UID:       uidByMessage(msg),
+        }
+
+        var firstErr error
+        for _, h := range t.handlers </span><span class="cov0" title="0">{
+                if meta.EventName != h.eventName </span><span class="cov0" title="0">{
+                        continue</span>
+                }
+
+                <span class="cov0" title="0">if !h.timeOffset.IsZero() &amp;&amp; meta.Timestamp &lt; h.timeOffset.Unix() </span><span class="cov0" title="0">{
+                        continue</span>
+                }
+
+                <span class="cov0" title="0">err = h.handler(meta, cevent.Payload)
+                if err != nil </span><span class="cov0" title="0">{
+                        if firstErr == nil </span><span class="cov0" title="0">{
+                                firstErr = err
+                        }</span>
+
+                        <span class="cov0" title="0">logrus.Errorf("Consume message error: %s", err.Error())</span>
+                }
+        }
+
+        <span class="cov0" title="0">return firstErr</span>
+}
+</pre>
+		
+		<pre class="file" id="file4" style="display: none">// Code generated by consumer_handler_gen.sh ; DO NOT EDIT.
+
+package estream
+
+import (
+        "encoding/json"
+
+        "bitbucket.manperi.com/olymp/estream/event"
+)
+
+// DealBoRealOpenHandler topic handler
+type DealBoRealOpenHandler func(event.Meta, event.DealBoRealOpenPayload) error
+
+func (h DealBoRealOpenHandler) saramaHandler() rawMessageHandler <span class="cov8" title="1">{
+        return func(meta event.Meta, raw json.RawMessage) error </span><span class="cov8" title="1">{
+                d := event.DealBoRealOpenPayload{}
+                if err := d.UnmarshalJSON(raw); err != nil </span><span class="cov8" title="1">{
+                        return err
+                }</span>
+                <span class="cov8" title="1">return h(meta, d)</span>
+        }
+}
+
+// DealBoRealCloseHandler topic handler
+type DealBoRealCloseHandler func(event.Meta, event.DealBoRealClosePayload) error
+
+func (h DealBoRealCloseHandler) saramaHandler() rawMessageHandler <span class="cov0" title="0">{
+        return func(meta event.Meta, raw json.RawMessage) error </span><span class="cov0" title="0">{
+                d := event.DealBoRealClosePayload{}
+                if err := d.UnmarshalJSON(raw); err != nil </span><span class="cov0" title="0">{
+                        return err
+                }</span>
+                <span class="cov0" title="0">return h(meta, d)</span>
+        }
+}
+
+// DealBoDemoOpenHandler topic handler
+type DealBoDemoOpenHandler func(event.Meta, event.DealBoDemoOpenPayload) error
+
+func (h DealBoDemoOpenHandler) saramaHandler() rawMessageHandler <span class="cov8" title="1">{
+        return func(meta event.Meta, raw json.RawMessage) error </span><span class="cov8" title="1">{
+                d := event.DealBoDemoOpenPayload{}
+                if err := d.UnmarshalJSON(raw); err != nil </span><span class="cov8" title="1">{
+                        return err
+                }</span>
+                <span class="cov8" title="1">return h(meta, d)</span>
+        }
+}
+
+// DealBoDemoCloseHandler topic handler
+type DealBoDemoCloseHandler func(event.Meta, event.DealBoDemoClosePayload) error
+
+func (h DealBoDemoCloseHandler) saramaHandler() rawMessageHandler <span class="cov0" title="0">{
+        return func(meta event.Meta, raw json.RawMessage) error </span><span class="cov0" title="0">{
+                d := event.DealBoDemoClosePayload{}
+                if err := d.UnmarshalJSON(raw); err != nil </span><span class="cov0" title="0">{
+                        return err
+                }</span>
+                <span class="cov0" title="0">return h(meta, d)</span>
+        }
+}
+
+// DealFxRealHandler topic handler
+type DealFxRealHandler func(event.Meta, event.DealFxRealPayload) error
+
+func (h DealFxRealHandler) saramaHandler() rawMessageHandler <span class="cov8" title="1">{
+        return func(meta event.Meta, raw json.RawMessage) error </span><span class="cov8" title="1">{
+                d := event.DealFxRealPayload{}
+                if err := d.UnmarshalJSON(raw); err != nil </span><span class="cov8" title="1">{
+                        return err
+                }</span>
+                <span class="cov8" title="1">return h(meta, d)</span>
+        }
+}
+
+// DealFxDemoHandler topic handler
+type DealFxDemoHandler func(event.Meta, event.DealFxDemoPayload) error
+
+func (h DealFxDemoHandler) saramaHandler() rawMessageHandler <span class="cov8" title="1">{
+        return func(meta event.Meta, raw json.RawMessage) error </span><span class="cov8" title="1">{
+                d := event.DealFxDemoPayload{}
+                if err := d.UnmarshalJSON(raw); err != nil </span><span class="cov8" title="1">{
+                        return err
+                }</span>
+                <span class="cov8" title="1">return h(meta, d)</span>
+        }
+}
+
+// UserOptionsHandler topic handler
+type UserOptionsHandler func(event.Meta, event.UserOptionsPayload) error
+
+func (h UserOptionsHandler) saramaHandler() rawMessageHandler <span class="cov0" title="0">{
+        return func(meta event.Meta, raw json.RawMessage) error </span><span class="cov0" title="0">{
+                d := event.UserOptionsPayload{}
+                if err := d.UnmarshalJSON(raw); err != nil </span><span class="cov0" title="0">{
+                        return err
+                }</span>
+                <span class="cov0" title="0">return h(meta, d)</span>
+        }
+}
+
+// UserPhoneHandler topic handler
+type UserPhoneHandler func(event.Meta, event.UserPhonePayload) error
+
+func (h UserPhoneHandler) saramaHandler() rawMessageHandler <span class="cov0" title="0">{
+        return func(meta event.Meta, raw json.RawMessage) error </span><span class="cov0" title="0">{
+                d := event.UserPhonePayload{}
+                if err := d.UnmarshalJSON(raw); err != nil </span><span class="cov0" title="0">{
+                        return err
+                }</span>
+                <span class="cov0" title="0">return h(meta, d)</span>
+        }
+}
+
+// UserEmailHandler topic handler
+type UserEmailHandler func(event.Meta, event.UserEmailPayload) error
+
+func (h UserEmailHandler) saramaHandler() rawMessageHandler <span class="cov0" title="0">{
+        return func(meta event.Meta, raw json.RawMessage) error </span><span class="cov0" title="0">{
+                d := event.UserEmailPayload{}
+                if err := d.UnmarshalJSON(raw); err != nil </span><span class="cov0" title="0">{
+                        return err
+                }</span>
+                <span class="cov0" title="0">return h(meta, d)</span>
+        }
+}
+
+// UserBanHandler topic handler
+type UserBanHandler func(event.Meta, event.UserBanPayload) error
+
+func (h UserBanHandler) saramaHandler() rawMessageHandler <span class="cov0" title="0">{
+        return func(meta event.Meta, raw json.RawMessage) error </span><span class="cov0" title="0">{
+                d := event.UserBanPayload{}
+                if err := d.UnmarshalJSON(raw); err != nil </span><span class="cov0" title="0">{
+                        return err
+                }</span>
+                <span class="cov0" title="0">return h(meta, d)</span>
+        }
+}
+
+// UserCreateHandler topic handler
+type UserCreateHandler func(event.Meta, event.UserCreatePayload) error
+
+func (h UserCreateHandler) saramaHandler() rawMessageHandler <span class="cov0" title="0">{
+        return func(meta event.Meta, raw json.RawMessage) error </span><span class="cov0" title="0">{
+                d := event.UserCreatePayload{}
+                if err := d.UnmarshalJSON(raw); err != nil </span><span class="cov0" title="0">{
+                        return err
+                }</span>
+                <span class="cov0" title="0">return h(meta, d)</span>
+        }
+}
+
+// UserVipHandler topic handler
+type UserVipHandler func(event.Meta, event.UserVipPayload) error
+
+func (h UserVipHandler) saramaHandler() rawMessageHandler <span class="cov0" title="0">{
+        return func(meta event.Meta, raw json.RawMessage) error </span><span class="cov0" title="0">{
+                d := event.UserVipPayload{}
+                if err := d.UnmarshalJSON(raw); err != nil </span><span class="cov0" title="0">{
+                        return err
+                }</span>
+                <span class="cov0" title="0">return h(meta, d)</span>
+        }
+}
+
+// UserPersonalInfoHandler topic handler
+type UserPersonalInfoHandler func(event.Meta, event.UserPersonalInfoPayload) error
+
+func (h UserPersonalInfoHandler) saramaHandler() rawMessageHandler <span class="cov0" title="0">{
+        return func(meta event.Meta, raw json.RawMessage) error </span><span class="cov0" title="0">{
+                d := event.UserPersonalInfoPayload{}
+                if err := d.UnmarshalJSON(raw); err != nil </span><span class="cov0" title="0">{
+                        return err
+                }</span>
+                <span class="cov0" title="0">return h(meta, d)</span>
+        }
+}
+
+// UserGeoIPHandler topic handler
+type UserGeoIPHandler func(event.Meta, event.UserGeoIPPayload) error
+
+func (h UserGeoIPHandler) saramaHandler() rawMessageHandler <span class="cov0" title="0">{
+        return func(meta event.Meta, raw json.RawMessage) error </span><span class="cov0" title="0">{
+                d := event.UserGeoIPPayload{}
+                if err := d.UnmarshalJSON(raw); err != nil </span><span class="cov0" title="0">{
+                        return err
+                }</span>
+                <span class="cov0" title="0">return h(meta, d)</span>
+        }
+}
+
+// UserRiskFreeOffHandler topic handler
+type UserRiskFreeOffHandler func(event.Meta, event.UserRiskFreeOffPayload) error
+
+func (h UserRiskFreeOffHandler) saramaHandler() rawMessageHandler <span class="cov0" title="0">{
+        return func(meta event.Meta, raw json.RawMessage) error </span><span class="cov0" title="0">{
+                d := event.UserRiskFreeOffPayload{}
+                if err := d.UnmarshalJSON(raw); err != nil </span><span class="cov0" title="0">{
+                        return err
+                }</span>
+                <span class="cov0" title="0">return h(meta, d)</span>
+        }
+}
+
+// UserAnalyticHandler topic handler
+type UserAnalyticHandler func(event.Meta, event.UserAnalyticPayload) error
+
+func (h UserAnalyticHandler) saramaHandler() rawMessageHandler <span class="cov0" title="0">{
+        return func(meta event.Meta, raw json.RawMessage) error </span><span class="cov0" title="0">{
+                d := event.UserAnalyticPayload{}
+                if err := d.UnmarshalJSON(raw); err != nil </span><span class="cov0" title="0">{
+                        return err
+                }</span>
+                <span class="cov0" title="0">return h(meta, d)</span>
+        }
+}
+
+// DormantRiskFreeHandler topic handler
+type DormantRiskFreeHandler func(event.Meta, event.DormantRiskFreePayload) error
+
+func (h DormantRiskFreeHandler) saramaHandler() rawMessageHandler <span class="cov0" title="0">{
+        return func(meta event.Meta, raw json.RawMessage) error </span><span class="cov0" title="0">{
+                d := event.DormantRiskFreePayload{}
+                if err := d.UnmarshalJSON(raw); err != nil </span><span class="cov0" title="0">{
+                        return err
+                }</span>
+                <span class="cov0" title="0">return h(meta, d)</span>
+        }
+}
+
+// BillingRequestCreateHandler topic handler
+type BillingRequestCreateHandler func(event.Meta, event.BillingRequestCreatePayload) error
+
+func (h BillingRequestCreateHandler) saramaHandler() rawMessageHandler <span class="cov0" title="0">{
+        return func(meta event.Meta, raw json.RawMessage) error </span><span class="cov0" title="0">{
+                d := event.BillingRequestCreatePayload{}
+                if err := d.UnmarshalJSON(raw); err != nil </span><span class="cov0" title="0">{
+                        return err
+                }</span>
+                <span class="cov0" title="0">return h(meta, d)</span>
+        }
+}
+
+// BillingRequestDoneHandler topic handler
+type BillingRequestDoneHandler func(event.Meta, event.BillingRequestDonePayload) error
+
+func (h BillingRequestDoneHandler) saramaHandler() rawMessageHandler <span class="cov0" title="0">{
+        return func(meta event.Meta, raw json.RawMessage) error </span><span class="cov0" title="0">{
+                d := event.BillingRequestDonePayload{}
+                if err := d.UnmarshalJSON(raw); err != nil </span><span class="cov0" title="0">{
+                        return err
+                }</span>
+                <span class="cov0" title="0">return h(meta, d)</span>
+        }
+}
+
+// BillingPayCreateHandler topic handler
+type BillingPayCreateHandler func(event.Meta, event.BillingPayCreatePayload) error
+
+func (h BillingPayCreateHandler) saramaHandler() rawMessageHandler <span class="cov0" title="0">{
+        return func(meta event.Meta, raw json.RawMessage) error </span><span class="cov0" title="0">{
+                d := event.BillingPayCreatePayload{}
+                if err := d.UnmarshalJSON(raw); err != nil </span><span class="cov0" title="0">{
+                        return err
+                }</span>
+                <span class="cov0" title="0">return h(meta, d)</span>
+        }
+}
+
+// BillingPayoutHandler topic handler
+type BillingPayoutHandler func(event.Meta, event.BillingPayoutPayload) error
+
+func (h BillingPayoutHandler) saramaHandler() rawMessageHandler <span class="cov0" title="0">{
+        return func(meta event.Meta, raw json.RawMessage) error </span><span class="cov0" title="0">{
+                d := event.BillingPayoutPayload{}
+                if err := d.UnmarshalJSON(raw); err != nil </span><span class="cov0" title="0">{
+                        return err
+                }</span>
+                <span class="cov0" title="0">return h(meta, d)</span>
+        }
+}
+
+// AmountLimitHandler topic handler
+type AmountLimitHandler func(event.Meta, event.AmountLimitPayload) error
+
+func (h AmountLimitHandler) saramaHandler() rawMessageHandler <span class="cov0" title="0">{
+        return func(meta event.Meta, raw json.RawMessage) error </span><span class="cov0" title="0">{
+                d := event.AmountLimitPayload{}
+                if err := d.UnmarshalJSON(raw); err != nil </span><span class="cov0" title="0">{
+                        return err
+                }</span>
+                <span class="cov0" title="0">return h(meta, d)</span>
+        }
+}
+
+// DealFXRealMarketHandler topic handler
+type DealFXRealMarketHandler func(event.Meta, event.DealFXRealMarketPayload) error
+
+func (h DealFXRealMarketHandler) saramaHandler() rawMessageHandler <span class="cov0" title="0">{
+        return func(meta event.Meta, raw json.RawMessage) error </span><span class="cov0" title="0">{
+                d := event.DealFXRealMarketPayload{}
+                if err := d.UnmarshalJSON(raw); err != nil </span><span class="cov0" title="0">{
+                        return err
+                }</span>
+                <span class="cov0" title="0">return h(meta, d)</span>
+        }
+}
+
+// BalanceChangeHandler topic handler
+type BalanceChangeHandler func(event.Meta, event.BalanceChangePayload) error
+
+func (h BalanceChangeHandler) saramaHandler() rawMessageHandler <span class="cov0" title="0">{
+        return func(meta event.Meta, raw json.RawMessage) error </span><span class="cov0" title="0">{
+                d := event.BalanceChangePayload{}
+                if err := d.UnmarshalJSON(raw); err != nil </span><span class="cov0" title="0">{
+                        return err
+                }</span>
+                <span class="cov0" title="0">return h(meta, d)</span>
+        }
+}
+
+// UserRiskScoreMetricHandler topic handler
+type UserRiskScoreMetricHandler func(event.Meta, event.UserRiskScoreMetricPayload) error
+
+func (h UserRiskScoreMetricHandler) saramaHandler() rawMessageHandler <span class="cov0" title="0">{
+        return func(meta event.Meta, raw json.RawMessage) error </span><span class="cov0" title="0">{
+                d := event.UserRiskScoreMetricPayload{}
+                if err := d.UnmarshalJSON(raw); err != nil </span><span class="cov0" title="0">{
+                        return err
+                }</span>
+                <span class="cov0" title="0">return h(meta, d)</span>
+        }
+}
+
+// UserRiskOverflowMetricHandler topic handler
+type UserRiskOverflowMetricHandler func(event.Meta, event.UserRiskOverflowMetricPayload) error
+
+func (h UserRiskOverflowMetricHandler) saramaHandler() rawMessageHandler <span class="cov0" title="0">{
+        return func(meta event.Meta, raw json.RawMessage) error </span><span class="cov0" title="0">{
+                d := event.UserRiskOverflowMetricPayload{}
+                if err := d.UnmarshalJSON(raw); err != nil </span><span class="cov0" title="0">{
+                        return err
+                }</span>
+                <span class="cov0" title="0">return h(meta, d)</span>
+        }
+}
+
+// UserRiskRunnerMetricHandler topic handler
+type UserRiskRunnerMetricHandler func(event.Meta, event.UserRiskRunnerMetricPayload) error
+
+func (h UserRiskRunnerMetricHandler) saramaHandler() rawMessageHandler <span class="cov0" title="0">{
+        return func(meta event.Meta, raw json.RawMessage) error </span><span class="cov0" title="0">{
+                d := event.UserRiskRunnerMetricPayload{}
+                if err := d.UnmarshalJSON(raw); err != nil </span><span class="cov0" title="0">{
+                        return err
+                }</span>
+                <span class="cov0" title="0">return h(meta, d)</span>
+        }
+}
+
+// UserLevelsSettingsProfitabilityChangeHandler topic handler
+type UserLevelsSettingsProfitabilityChangeHandler func(event.Meta, event.UserLevelsSettingsProfitabilityChangePayload) error
+
+func (h UserLevelsSettingsProfitabilityChangeHandler) saramaHandler() rawMessageHandler <span class="cov0" title="0">{
+        return func(meta event.Meta, raw json.RawMessage) error </span><span class="cov0" title="0">{
+                d := event.UserLevelsSettingsProfitabilityChangePayload{}
+                if err := d.UnmarshalJSON(raw); err != nil </span><span class="cov0" title="0">{
+                        return err
+                }</span>
+                <span class="cov0" title="0">return h(meta, d)</span>
+        }
+}
+
+// UserLevelsSettingsLevelChangeHandler topic handler
+type UserLevelsSettingsLevelChangeHandler func(event.Meta, event.UserLevelsSettingsLevelChangePayload) error
+
+func (h UserLevelsSettingsLevelChangeHandler) saramaHandler() rawMessageHandler <span class="cov0" title="0">{
+        return func(meta event.Meta, raw json.RawMessage) error </span><span class="cov0" title="0">{
+                d := event.UserLevelsSettingsLevelChangePayload{}
+                if err := d.UnmarshalJSON(raw); err != nil </span><span class="cov0" title="0">{
+                        return err
+                }</span>
+                <span class="cov0" title="0">return h(meta, d)</span>
+        }
+}
+
+// AppsflyerPushHandler topic handler
+type AppsflyerPushHandler func(event.Meta, event.AppsflyerPushPayload) error
+
+func (h AppsflyerPushHandler) saramaHandler() rawMessageHandler <span class="cov0" title="0">{
+        return func(meta event.Meta, raw json.RawMessage) error </span><span class="cov0" title="0">{
+                d := event.AppsflyerPushPayload{}
+                if err := d.UnmarshalJSON(raw); err != nil </span><span class="cov0" title="0">{
+                        return err
+                }</span>
+                <span class="cov0" title="0">return h(meta, d)</span>
+        }
+}
+</pre>
+		
+		<pre class="file" id="file5" style="display: none">package estream
+
+import (
+        "log"
+        "os"
+
+        "github.com/Shopify/sarama"
+)
+
+// EnableDebug sets sarama logger output to os.Stdout
+func EnableDebug() <span class="cov0" title="0">{
+        sarama.Logger = log.New(os.Stdout, "[Sarama] ", log.LstdFlags)
+}</span>
+</pre>
+		
+		<pre class="file" id="file6" style="display: none">package estream
+
+import "encoding/json"
+
+// jsonEncoder is adapter to sarama.Encoder interface
+// should be embedded to target struct
+type jsonEncoder struct {
+        entity interface{}
+
+        enc []byte
+        err error
+}
+
+func (e *jsonEncoder) ensureEncoded() <span class="cov8" title="1">{
+        e.enc, e.err = json.Marshal(e.entity) // nolint: staticcheck
+}</span>
+
+// Length ensure struct encoded and returns length of encoded byte slice
+func (e *jsonEncoder) Length() int <span class="cov8" title="1">{
+        e.ensureEncoded()
+        return len(e.enc)
+}</span>
+
+// Encode returns json encoded bytes slice or error on marshaling error
+func (e *jsonEncoder) Encode() ([]byte, error) <span class="cov8" title="1">{
+        e.ensureEncoded()
+        return e.enc, e.err
+}</span>
+</pre>
+		
+		<pre class="file" id="file7" style="display: none">package estream
+
+import (
+        "encoding/json"
+        "errors"
+        "fmt"
+
+        "bitbucket.manperi.com/olymp/estream/event"
+
+        "github.com/Shopify/sarama"
+)
+
+const (
+        // EventUserOptionsUpdate happens when user options updated
+        EventUserOptionsUpdate = "user.options.update"
+        // EventUserOptionsDelete happens when user options deleted
+        EventUserOptionsDelete = "user.options.delete"
+
+        // EventBoDealRealOpen ...
+        EventBoDealRealOpen = "bo.deal.real.open"
+        // EventBoDealDemoOpen ...
+        EventBoDealDemoOpen = "bo.deal.demo.open"
+        // EventBoDealRealClose ...
+        EventBoDealRealClose = "bo.deal.real.close"
+        // EventBoDealDemoClose ...
+        EventBoDealDemoClose = "bo.deal.demo.close"
+
+        // EventFxDealRealOpen ...
+        EventFxDealRealOpen = "fx.deal.real.open"
+        // EventFxDealDemoOpen ...
+        EventFxDealDemoOpen = "fx.deal.demo.open"
+        // EventFxDealRealClose ...
+        EventFxDealRealClose = "fx.deal.real.close"
+        // EventFxDealDemoClose ...
+        EventFxDealDemoClose = "fx.deal.demo.close"
+        // EventFxDealRealChange ...
+        EventFxDealRealChange = "fx.deal.real.change"
+        // EventFxDealDemoChange ...
+        EventFxDealDemoChange = "fx.deal.demo.change"
+
+        // EventFxDealMarketOpen ...
+        EventFxDealMarketOpen = "fx.deal.real.market.open"
+        // EventFxDealMarketChange ...
+        EventFxDealMarketChange = "fx.deal.real.market.change"
+
+        // EventUserCreate ...
+        EventUserCreate = "user_create"
+        // EventUserBan ...
+        EventUserBan = "user_ban"
+        // EventUserEmail ...
+        EventUserEmail = "user_email"
+        // EventUserPhone ...
+        EventUserPhone = "user_phone"
+        // EventUserVipStatus ...
+        EventUserVipStatus = "user_vip_change"
+        // EventUserPersonalInfo ...
+        EventUserPersonalInfo = "user_personal_info_change"
+        // EventUserGeoIPChange happens when user geo data changed
+        EventUserGeoIPChange = "user_geo_ip"
+        // EventUserRiskFreeOff happens when disable user risk free award flag changed
+        EventUserRiskFreeOff = "user_risk_free_off"
+        // EventUserAnalytic happens when user analytics data is changed
+        EventUserAnalytic = "user_analytic"
+
+        // EventUserAmountLimit ...
+        EventUserAmountLimit = "user_amount_limit"
+        // EventUserRiskScoreMetric ...
+        EventUserRiskScoreMetric = "user_risk_score_metric"
+        // EventUserRiskOverflowMetric ...
+        EventUserRiskOverflowMetric = "user_risk_overflow_metric"
+        // EventUserRiskRunnerMetric ...
+        EventUserRiskRunnerMetric = "user_risk_runner_metric"
+
+        // EventDormantDelRiskFree ...
+        EventDormantDelRiskFree = "dormant_del_risk_free"
+
+        // EventUserLevelsSettingsProfitabilityChange happens when user get new profitability value
+        EventUserLevelsSettingsProfitabilityChange = "user_levels_settings_profitability_change"
+        // EventUserLevelsSettingsLevelChange happens when user get new service level
+        EventUserLevelsSettingsLevelChange = "user_levels_settings_level_change"
+
+        // EventBillingRequestCreate ...
+        EventBillingRequestCreate = "billing_request_create"
+        // EventBillingRequestDone ...
+        EventBillingRequestDone = "billing_request_done"
+        // EventBillingPayCreate ...
+        EventBillingPayCreate = "billing_pay_create"
+        // EventBillingPayout ...
+        EventBillingPayout = "billing_payout"
+
+        // EventBalanceChange ...
+        EventBalanceChange = "balance.change"
+
+        // EventAppsflyerPush name
+        EventAppsflyerPush = "appsflyer.push"
+)
+
+// ErrUnsupportedEvent for undefined eventName
+var ErrUnsupportedEvent = errors.New("unsupported event, see estream.eventTopic map for full events list")
+
+var eventTopic = map[string]Topic{
+        // user-options events
+        EventUserOptionsUpdate: TopicUserOptions,
+        EventUserOptionsDelete: TopicUserOptions,
+
+        // olymp-deals events
+        EventBoDealRealOpen:  TopicDealBoReal,
+        EventBoDealRealClose: TopicDealBoReal,
+        EventBoDealDemoOpen:  TopicDealBoDemo,
+        EventBoDealDemoClose: TopicDealBoDemo,
+
+        // forex-deals events
+        EventFxDealRealOpen:   TopicDealFxReal,
+        EventFxDealRealClose:  TopicDealFxReal,
+        EventFxDealRealChange: TopicDealFxReal,
+        EventFxDealDemoOpen:   TopicDealFxDemo,
+        EventFxDealDemoClose:  TopicDealFxDemo,
+        EventFxDealDemoChange: TopicDealFxDemo,
+
+        // forex-deals market events
+        EventFxDealMarketOpen:   TopicDealFxRealMarket,
+        EventFxDealMarketChange: TopicDealFxRealMarket,
+
+        // user data change
+        EventUserCreate:       TopicUser,
+        EventUserBan:          TopicUser,
+        EventUserEmail:        TopicUser,
+        EventUserPhone:        TopicUser,
+        EventUserVipStatus:    TopicUser,
+        EventUserPersonalInfo: TopicUser,
+        EventUserGeoIPChange:  TopicUser,
+        EventUserRiskFreeOff:  TopicUser,
+        EventUserAnalytic:     TopicUser,
+
+        // user risks
+        EventUserAmountLimit:        TopicUserRisks,
+        EventUserRiskScoreMetric:    TopicUserRisks,
+        EventUserRiskOverflowMetric: TopicUserRisks,
+        EventUserRiskRunnerMetric:   TopicUserRisks,
+
+        // user levels settings
+        EventUserLevelsSettingsProfitabilityChange: TopicUserLevels,
+        EventUserLevelsSettingsLevelChange:         TopicUserLevels,
+
+        // dormant fee
+        EventDormantDelRiskFree: TopicDormant,
+
+        // billing
+        EventBillingRequestCreate: TopicBilling,
+        EventBillingRequestDone:   TopicBilling,
+        EventBillingPayCreate:     TopicBilling,
+        EventBillingPayout:        TopicBilling,
+
+        // balance
+        EventBalanceChange: TopicBalance,
+
+        // appsflyer
+        EventAppsflyerPush: TopicAppsflyerPush,
+}
+
+var eventToPayload = map[string]func() event.Payload{
+        // user
+        EventUserOptionsUpdate: func() event.Payload <span class="cov0" title="0">{ return new(event.UserOptionsPayload) }</span>,
+        EventUserOptionsDelete: func() event.Payload <span class="cov0" title="0">{ return new(event.UserOptionsPayload) }</span>,
+        EventUserCreate:        func() event.Payload <span class="cov0" title="0">{ return new(event.UserCreatePayload) }</span>,
+        EventUserBan:           func() event.Payload <span class="cov0" title="0">{ return new(event.UserBanPayload) }</span>,
+        EventUserEmail:         func() event.Payload <span class="cov0" title="0">{ return new(event.UserEmailPayload) }</span>,
+        EventUserPhone:         func() event.Payload <span class="cov0" title="0">{ return new(event.UserPhonePayload) }</span>,
+        EventUserVipStatus:     func() event.Payload <span class="cov0" title="0">{ return new(event.UserVipPayload) }</span>,
+        EventUserPersonalInfo:  func() event.Payload <span class="cov0" title="0">{ return new(event.UserPersonalInfoPayload) }</span>,
+        EventUserGeoIPChange:   func() event.Payload <span class="cov0" title="0">{ return new(event.UserGeoIPPayload) }</span>,
+        EventUserRiskFreeOff:   func() event.Payload <span class="cov0" title="0">{ return new(event.UserRiskFreeOffPayload) }</span>,
+        EventUserAnalytic:      func() event.Payload <span class="cov0" title="0">{ return new(event.UserAnalyticPayload) }</span>,
+
+        EventUserAmountLimit: func() event.Payload <span class="cov0" title="0">{ return new(event.AmountLimitPayload) }</span>,
+
+        // dormant
+        EventDormantDelRiskFree: func() event.Payload <span class="cov0" title="0">{ return new(event.DormantRiskFreePayload) }</span>,
+
+        // billing
+        EventBillingRequestCreate: func() event.Payload <span class="cov0" title="0">{ return new(event.BillingRequestCreatePayload) }</span>,
+        EventBillingRequestDone:   func() event.Payload <span class="cov0" title="0">{ return new(event.BillingRequestDonePayload) }</span>,
+        EventBillingPayCreate:     func() event.Payload <span class="cov0" title="0">{ return new(event.BillingPayCreatePayload) }</span>,
+        EventBillingPayout:        func() event.Payload <span class="cov0" title="0">{ return new(event.BillingPayoutPayload) }</span>,
+}
+
+// ParsePayload returns slice of payloads model, error when payload for event not defined or incorrect raw event
+func ParsePayload(eventName string, raw []byte) (event.Payload, error) <span class="cov0" title="0">{
+        f, ok := eventToPayload[eventName]
+        if !ok </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("create payload: payload func for '%s' event not found", eventName)
+        }</span>
+
+        <span class="cov0" title="0">p := f()
+        err := p.UnmarshalJSON(raw)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("unmarshal event payload: %v", err)
+        }</span>
+        <span class="cov0" title="0">return p, nil</span>
+}
+
+type consumerEvent struct {
+        event.Meta `json:",inline"`
+        Payload    json.RawMessage `json:"payload"`
+}
+
+type producerEvent struct {
+        event.Meta `json:",inline"`
+        Payload    event.Payload `json:"payload"`
+}
+
+func uidByMessage(msg *sarama.ConsumerMessage) string <span class="cov0" title="0">{
+        return fmt.Sprintf("%s:%d:%d", msg.Topic, msg.Partition, msg.Offset)
+}</span>
+</pre>
+		
+		<pre class="file" id="file8" style="display: none">package estream
+
+import (
+        "bufio"
+        "encoding/json"
+        "fmt"
+        "io"
+        "os"
+        "sync"
+        "time"
+
+        "github.com/Shopify/sarama"
+        "github.com/sirupsen/logrus"
+)
+
+type (
+        // Fallback scheme for kafka unavailable period
+        Fallback interface {
+                Close() error
+                Send(*sarama.ProducerMessage) error
+        }
+
+        // FallbackMessage contains data for repeat event send
+        FallbackMessage struct {
+                Topic string `json:"topic"`
+                Value string `json:"value"`
+                Key   string `json:"key"`
+        }
+
+        fallbackProducer interface {
+                SendMessage(msg *sarama.ProducerMessage) (partition int32, offset int64, err error)
+        }
+
+        // FallbackController writes messages to fallback file and trying to send in separate groutines
+        FallbackController struct {
+                cfg          FallbackConfig
+                wfile        io.WriteCloser
+                producer     fallbackProducer
+                queue        chan FallbackMessage
+                queueCloseMu sync.RWMutex
+                close        chan struct{}
+                finished     chan struct{}
+        }
+)
+
+// NewFallbackController returns file fallback controller or devNull fallback if file not defined in config
+func NewFallbackController(cfg FallbackConfig, publisher fallbackProducer) (Fallback, error) <span class="cov8" title="1">{
+        if len(cfg.File) == 0 </span><span class="cov8" title="1">{
+                logrus.Warn("Estream fallback disabled")
+                return &amp;devNullFallback{}, nil
+        }</span>
+
+        // setup defaults settings
+        <span class="cov8" title="1">setFallbackDefaults(&amp;cfg)
+
+        fc := &amp;FallbackController{
+                cfg:      cfg,
+                producer: publisher,
+                queue:    make(chan FallbackMessage, cfg.QueueSize),
+                close:    make(chan struct{}),
+                finished: make(chan struct{}),
+        }
+
+        if err := fc.openWriteFile(); err != nil </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("open fallback file: %v", err)
+        }</span>
+
+        <span class="cov8" title="1">go fc.readWriteLoop()
+
+        return fc, nil</span>
+}
+
+// Close closes fallback file after all
+func (f *FallbackController) Close() error <span class="cov8" title="1">{
+        f.queueCloseMu.Lock()
+        close(f.close)
+        close(f.queue)
+        f.queueCloseMu.Unlock()
+
+        select </span>{
+        case &lt;-f.finished:<span class="cov8" title="1"></span>
+        case &lt;-time.After(time.Second):<span class="cov0" title="0">
+                return fmt.Errorf("timeout of complete estrean fallback read/writes: 1s")</span>
+        }
+
+        <span class="cov8" title="1">if err := f.wfile.Close(); err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("close fallback file: %v", err)
+        }</span>
+        <span class="cov8" title="1">return nil</span>
+}
+
+// Send sends message to fallback queue, returns error when queue is full and timeout reached
+func (f *FallbackController) Send(msg *sarama.ProducerMessage) error <span class="cov8" title="1">{
+        f.queueCloseMu.RLock()
+        defer f.queueCloseMu.RUnlock()
+
+        select </span>{
+        case &lt;-f.close:<span class="cov0" title="0">
+                return fmt.Errorf("estream fallback closed")</span>
+        default:<span class="cov8" title="1"></span>
+        }
+
+        <span class="cov8" title="1">timeout := time.NewTimer(f.cfg.ResendTimeout)
+        defer timeout.Stop()
+
+        select </span>{
+        case f.queue &lt;- toFallbackMessage(msg):<span class="cov8" title="1"></span>
+        case &lt;-timeout.C:<span class="cov0" title="0">
+                return fmt.Errorf("fallback queue is full")</span>
+        }
+
+        <span class="cov8" title="1">return nil</span>
+}
+
+// Background loop to run single action per moment:
+//    - write to file messages from internal queue
+//          - try to resend messages from fallback file
+func (f *FallbackController) readWriteLoop() <span class="cov8" title="1">{
+        resendTimer := time.NewTimer(f.cfg.ResendInterval)
+        defer func() </span><span class="cov8" title="1">{
+                resendTimer.Stop()
+                close(f.finished)
+        }</span>()
+
+        <span class="cov8" title="1">for </span><span class="cov8" title="1">{
+                select </span>{
+                case &lt;-resendTimer.C:<span class="cov8" title="1">
+                        f.resend()
+                        resendTimer.Reset(f.cfg.ResendInterval)</span>
+                case msg, ok := &lt;-f.queue:<span class="cov8" title="1">
+                        if !ok </span><span class="cov8" title="1">{
+                                return
+                        }</span>
+                        <span class="cov8" title="1">writeFile(f.wfile, msg)</span>
+                case &lt;-f.close:<span class="cov8" title="1">
+                        for msg := range f.queue </span><span class="cov8" title="1">{
+                                writeFile(f.wfile, msg)
+                        }</span>
+                        <span class="cov8" title="1">return</span>
+                }
+        }
+}
+
+func (f *FallbackController) resend() <span class="cov8" title="1">{
+        // Create temporary file for messages that failed to be resend
+        tmpFilePath := f.cfg.File + ".tmp"
+        tmpFile, err := os.OpenFile(tmpFilePath, os.O_TRUNC|os.O_CREATE|os.O_WRONLY, 0644)
+        if err != nil </span><span class="cov0" title="0">{
+                logrus.WithError(err).Error("Failed to create tmp fallback file.")
+                return
+        }</span>
+
+        // last step for resend is reopen file for write purposes
+        <span class="cov8" title="1">defer func(start time.Time) </span><span class="cov8" title="1">{
+                if opError := f.openWriteFile(); opError != nil </span><span class="cov0" title="0">{
+                        logrus.WithError(opError).Errorf("Failed open fallback file, recreate %v", false)
+                }</span>
+
+                <span class="cov8" title="1">fallbackResendSymmary.Observe(time.Since(start).Seconds())</span>
+        }(time.Now())
+
+        <span class="cov8" title="1">if err = f.wfile.Close(); err != nil </span><span class="cov0" title="0">{
+                logrus.WithError(err).Error("Failed close writable file, skip resend process.")
+                closeFile(tmpFile)
+                return
+        }</span>
+
+        <span class="cov8" title="1">rfile, err := os.OpenFile(f.cfg.File, os.O_RDONLY, 0644)
+        if err != nil </span><span class="cov0" title="0">{
+                logrus.WithError(err).Error("Failed open fallback file")
+                closeFile(tmpFile)
+                return
+        }</span>
+
+        <span class="cov8" title="1">scanner := bufio.NewScanner(rfile)
+        for scanner.Scan() </span><span class="cov8" title="1">{
+                raw := scanner.Bytes()
+                fmsg, msg, err := fromRawFallbackMessage(raw)
+                if err != nil </span><span class="cov0" title="0">{
+                        logrus.WithFields(map[string]interface{}{
+                                "error":   err,
+                                "raw_msg": string(raw),
+                        }).Error("Failed convert message")
+                        continue</span>
+                }
+
+                <span class="cov8" title="1">if _, _, err := f.producer.SendMessage(msg); err != nil </span><span class="cov8" title="1">{
+                        fallbackMessagesForSendGauge.WithLabelValues("failed").Inc()
+                        logrus.WithError(err).Error("EstreamFallback: failed send estream fallback")
+
+                        writeFile(tmpFile, *fmsg)
+                }</span>
+
+                <span class="cov8" title="1">fallbackMessagesForSendGauge.WithLabelValues("sent").Inc()</span>
+        }
+
+        <span class="cov8" title="1">closeFile(rfile)
+        closeFile(tmpFile)
+        if err := os.Rename(tmpFilePath, f.cfg.File); err != nil </span><span class="cov0" title="0">{
+                logrus.WithError(err).Error("Failed to move tmp fallback file to persist file.")
+        }</span>
+}
+
+func (f *FallbackController) openWriteFile() error <span class="cov8" title="1">{
+        flags := os.O_APPEND | os.O_CREATE | os.O_WRONLY
+
+        wfile, err := os.OpenFile(f.cfg.File, flags, 0644)
+        if err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("create fallback file: %v", err)
+        }</span>
+
+        <span class="cov8" title="1">f.wfile = wfile
+        return nil</span>
+}
+
+func closeFile(f *os.File) <span class="cov8" title="1">{
+        if err := f.Close(); err != nil </span><span class="cov0" title="0">{
+                logrus.WithError(err).Errorf("Failed to close `%s`.", f.Name())
+        }</span>
+}
+
+func writeFile(f io.WriteCloser, msg FallbackMessage) <span class="cov8" title="1">{
+        b, err := json.Marshal(msg)
+        if err != nil </span><span class="cov0" title="0">{
+                logrus.WithFields(map[string]interface{}{
+                        "error":            err.Error(),
+                        "fallback_message": msg,
+                }).Error("Failed marshal fallback message")
+                return
+        }</span>
+
+        <span class="cov8" title="1">_, err = f.Write(append(b, '\n'))
+        if err != nil </span><span class="cov0" title="0">{
+                logrus.WithFields(map[string]interface{}{
+                        "error":            err.Error(),
+                        "fallback_message": msg,
+                }).Error("Failed write to estream fallback file")
+        }</span>
+}
+
+func fromRawFallbackMessage(raw []byte) (*FallbackMessage, *sarama.ProducerMessage, error) <span class="cov8" title="1">{
+        fmsg := &amp;FallbackMessage{}
+        err := json.Unmarshal(raw, fmsg)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, nil, fmt.Errorf("unmarshal raw fallback message: %v", err)
+        }</span>
+
+        <span class="cov8" title="1">return fmsg, &amp;sarama.ProducerMessage{
+                Topic: fmsg.Topic,
+                Key:   sarama.StringEncoder(fmsg.Key),
+                Value: sarama.StringEncoder(fmsg.Value),
+        }, nil</span>
+}
+
+func toFallbackMessage(msg *sarama.ProducerMessage) FallbackMessage <span class="cov8" title="1">{
+        var (
+                key, val []byte
+                err      error
+        )
+        if msg.Key != nil </span><span class="cov8" title="1">{
+                key, err = msg.Key.Encode()
+                if err != nil </span><span class="cov0" title="0">{
+                        logrus.WithError(err).Error("Failed encode message key for fallback, imposible")
+                }</span>
+        }
+
+        <span class="cov8" title="1">val, err = msg.Value.Encode()
+        if err != nil </span><span class="cov0" title="0">{
+                logrus.WithError(err).Error("Failed encode message value for fallback, imposible")
+        }</span>
+
+        <span class="cov8" title="1">return FallbackMessage{
+                Topic: msg.Topic,
+                Key:   string(key),
+                Value: string(val),
+        }</span>
+}
+
+type devNullFallback struct{}
+
+func (f *devNullFallback) Close() error                       <span class="cov8" title="1">{ return nil }</span>
+func (f *devNullFallback) Send(*sarama.ProducerMessage) error <span class="cov8" title="1">{ return nil }</span>
+</pre>
+		
+		<pre class="file" id="file9" style="display: none">package estream
+
+import "github.com/prometheus/client_golang/prometheus"
+
+var (
+        producerSendCount = prometheus.NewCounterVec(
+                prometheus.CounterOpts{
+                        Namespace: "estream",
+                        Subsystem: "producer",
+                        Name:      "send_count",
+                        Help:      "Send call count",
+                },
+                []string{"topic", "event_name", "error"},
+        )
+
+        producerEventsCount = prometheus.NewCounterVec(
+                prometheus.CounterOpts{
+                        Namespace: "estream",
+                        Subsystem: "producer",
+                        Name:      "events_count",
+                        Help:      "Produced events count",
+                },
+                []string{"topic", "error"},
+        )
+
+        consumerHandlerHistogram = prometheus.NewHistogramVec(
+                prometheus.HistogramOpts{
+                        Namespace: "estream",
+                        Subsystem: "consumer",
+                        Name:      "duration_seconds",
+                        Help:      "Time elapsed to consume single messsage",
+                },
+                []string{"topic", "error"},
+        )
+
+        consumerGroupHandlerHistogram = prometheus.NewHistogramVec(
+                prometheus.HistogramOpts{
+                        Namespace: "estream",
+                        Subsystem: "consumer_group",
+                        Name:      "duration_seconds",
+                        Help:      "Time elapsed to consume single messsage",
+                },
+                []string{"consumer_group", "topic", "event_name"},
+        )
+
+        fallbackMessagesForSendGauge = prometheus.NewGaugeVec(
+                prometheus.GaugeOpts{
+                        Namespace: "estream",
+                        Subsystem: "fallback",
+                        Name:      "messages_total",
+                        Help:      "total messages in fallback process",
+                },
+                []string{"status"},
+        )
+
+        fallbackResendSymmary = prometheus.NewSummary(
+                prometheus.SummaryOpts{
+                        Namespace: "estream",
+                        Subsystem: "fallback",
+                        Name:      "messages_total",
+                        Help:      "Time elapsed to single fallback resend action",
+                },
+        )
+)
+
+func errLabelValue(err error) string <span class="cov8" title="1">{
+        if err != nil </span><span class="cov0" title="0">{
+                return "false"
+        }</span>
+        <span class="cov8" title="1">return "true"</span>
+}
+
+func init() <span class="cov8" title="1">{
+        prometheus.MustRegister(producerEventsCount)
+        prometheus.MustRegister(producerSendCount)
+        prometheus.MustRegister(consumerHandlerHistogram)
+        prometheus.MustRegister(consumerGroupHandlerHistogram)
+}</span>
+</pre>
+		
+		<pre class="file" id="file10" style="display: none">package estream
+
+import (
+        "fmt"
+        "time"
+
+        "bitbucket.manperi.com/olymp/estream/event"
+
+        "github.com/Shopify/sarama"
+        "github.com/chapsuk/wait"
+        "github.com/google/uuid"
+        "github.com/hashicorp/go-multierror"
+        "github.com/sirupsen/logrus"
+)
+
+type (
+        // AsyncProducer is minimal sarama.AsyncProducer interface
+        AsyncProducer interface {
+                Close() error
+                Errors() &lt;-chan *sarama.ProducerError
+                Input() chan&lt;- *sarama.ProducerMessage
+                Successes() &lt;-chan *sarama.ProducerMessage
+        }
+)
+
+var (
+        // defaultProducerErrorHandler returns handler which writes producer error to logs by logrus package
+        defaultProducerErrorHandler = func(e *sarama.ProducerError) <span class="cov8" title="1">{
+                producerEventsCount.
+                        WithLabelValues(e.Msg.Topic, "true").
+                        Inc()
+
+                v := []byte(`empty body`)
+                if e.Msg.Value != nil </span><span class="cov0" title="0">{
+                        var err error
+                        v, err = e.Msg.Value.Encode()
+                        if err != nil </span><span class="cov0" title="0">{
+                                v = []byte(`encode error`)
+                        }</span>
+                }
+
+                <span class="cov8" title="1">logrus.WithFields(map[string]interface{}{
+                        "kafka_topic": e.Msg.Topic,
+                        "kafka_msg":   string(v),
+                        "error":       e.Error(),
+                }).Error("Kafka: failed send message")</span>
+        }
+
+        defaultProducerSuccessHandler = func(msg *sarama.ProducerMessage) <span class="cov0" title="0">{
+                producerEventsCount.
+                        WithLabelValues(msg.Topic, "false").
+                        Inc()
+        }</span>
+
+        // defaultNewAsyncProducer using default sarama config and returns kafka client
+        // do not use default settings and redefine config for each producer
+        defaultNewAsyncProducer = func(addrs []string, cfg *sarama.Config) (AsyncProducer, error) <span class="cov0" title="0">{
+                return sarama.NewAsyncProducer(addrs, cfg)
+        }</span>
+
+        // defaultNewSyncProducer returns sarama sync producer
+        defaultNewSyncProducer = func(addrs []string, cfg *sarama.Config) (sarama.SyncProducer, error) <span class="cov8" title="1">{
+                return sarama.NewSyncProducer(addrs, cfg)
+        }</span>
+)
+
+// ProducerOpt allows to customize events producer
+type ProducerOpt func(*Producer)
+
+// WithSuccessHandlerProducerOpt sets handler for successes channel
+func WithSuccessHandlerProducerOpt(h func(*sarama.ProducerMessage)) ProducerOpt <span class="cov8" title="1">{
+        return func(p *Producer) </span><span class="cov8" title="1">{
+                p.scchan = h
+        }</span>
+}
+
+// WithAsyncProducerOpt allows to redefine kafka sender factory func
+func WithAsyncProducerOpt(f func(addrs []string, cfg *sarama.Config) (AsyncProducer, error)) ProducerOpt <span class="cov8" title="1">{
+        return func(p *Producer) </span><span class="cov8" title="1">{
+                p.newAsyncProducer = f
+        }</span>
+}
+
+// WithSyncProducerOpt sets construcotr func for sync producer, default is sarama.NewSyncProducer
+func WithSyncProducerOpt(f func(addrs []string, cfg *sarama.Config) (sarama.SyncProducer, error)) ProducerOpt <span class="cov8" title="1">{
+        return func(p *Producer) </span><span class="cov8" title="1">{
+                p.newSyncProducer = f
+        }</span>
+}
+
+// WithConfigProducerOpt sets sarama cluster config
+func WithConfigProducerOpt(cfg *sarama.Config) ProducerOpt <span class="cov8" title="1">{
+        return func(p *Producer) </span><span class="cov8" title="1">{
+                p.config = cfg
+        }</span>
+}
+
+// Producer allows to publish events to event stream
+type Producer struct {
+        asyncProducer    AsyncProducer
+        syncProducer     sarama.SyncProducer
+        config           *sarama.Config
+        errhan           func(*sarama.ProducerError)
+        scchan           func(*sarama.ProducerMessage)
+        newAsyncProducer func(addrs []string, cfg *sarama.Config) (AsyncProducer, error)
+        newSyncProducer  func(addrs []string, cfg *sarama.Config) (sarama.SyncProducer, error)
+        wg               *wait.Group
+        fallback         Fallback
+}
+
+// NewProducer creates kafka producer and returns estream.Producer instance
+func NewProducer(cfg Config, opts ...ProducerOpt) (Producer, error) <span class="cov8" title="1">{
+        p := Producer{
+                wg:               new(wait.Group),
+                errhan:           defaultProducerErrorHandler,
+                scchan:           defaultProducerSuccessHandler,
+                config:           NewSaramaConfig(),
+                newAsyncProducer: defaultNewAsyncProducer,
+                newSyncProducer:  defaultNewSyncProducer,
+        }
+
+        for _, opt := range opts </span><span class="cov8" title="1">{
+                opt(&amp;p)
+        }</span>
+
+        <span class="cov8" title="1">if err := p.validate(); err != nil </span><span class="cov8" title="1">{
+                return p, fmt.Errorf("validate producer settings: %v", err)
+        }</span>
+
+        <span class="cov8" title="1">var err error
+        p.syncProducer, err = p.newSyncProducer(cfg.Addresses, p.config)
+        if err != nil </span><span class="cov8" title="1">{
+                return p, fmt.Errorf("create kafka sync producer: %v", err)
+        }</span>
+
+        <span class="cov8" title="1">p.asyncProducer, err = p.newAsyncProducer(cfg.Addresses, p.config)
+        if err != nil </span><span class="cov0" title="0">{
+                return p, fmt.Errorf("create kafka async producer: %v", err)
+        }</span>
+
+        <span class="cov8" title="1">p.fallback, err = NewFallbackController(cfg.FallBack, p.syncProducer)
+        if err != nil </span><span class="cov0" title="0">{
+                return p, fmt.Errorf("create fallback controller: %v", err)
+        }</span>
+
+        <span class="cov8" title="1">if p.config.Producer.Return.Errors </span><span class="cov8" title="1">{
+                p.wg.Add(p.serveErrorChannel)
+        }</span>
+        <span class="cov8" title="1">if p.config.Producer.Return.Successes </span><span class="cov8" title="1">{
+                p.wg.Add(p.serveSuccessChannel)
+        }</span>
+
+        <span class="cov8" title="1">return p, nil</span>
+}
+
+// SendSync sends message to kafka and returns error as result of peration
+// does not use fallback scheme
+func (p Producer) SendSync(eventName string, payload event.Payload) error <span class="cov0" title="0">{
+        t, ok := eventTopic[eventName]
+        if !ok </span><span class="cov0" title="0">{
+                return ErrUnsupportedEvent
+        }</span>
+
+        <span class="cov0" title="0">_, _, err := p.syncProducer.SendMessage(&amp;sarama.ProducerMessage{
+                Topic: t.String(),
+                Key:   sarama.StringEncoder(payload.PartitionKey()),
+                Value: &amp;jsonEncoder{entity: producerEvent{
+                        Meta: event.Meta{
+                                EventName: eventName,
+                                Timestamp: time.Now().Unix(),
+                                UID:       randomUUID(),
+                        },
+                        Payload: payload,
+                }},
+        })
+
+        producerEventsCount.
+                WithLabelValues(t.String(), errLabelValue(err)).
+                Inc()
+
+        return err</span>
+}
+
+// Send event
+func (p Producer) Send(eventName string, payload event.Payload) error <span class="cov8" title="1">{
+        t, ok := eventTopic[eventName]
+        if !ok </span><span class="cov0" title="0">{
+                return ErrUnsupportedEvent
+        }</span>
+
+        <span class="cov8" title="1">err := p.send(t, sarama.StringEncoder(payload.PartitionKey()), producerEvent{
+                Meta: event.Meta{
+                        EventName: eventName,
+                        Timestamp: time.Now().Unix(),
+                        UID:       randomUUID(),
+                },
+                Payload: payload,
+        })
+
+        producerSendCount.
+                WithLabelValues(t.String(), eventName, errLabelValue(err)).
+                Inc()
+
+        return err</span>
+}
+
+// SendRaw parses event payload and send event to kafka topic
+func (p Producer) SendRaw(eventName string, raw []byte) error <span class="cov0" title="0">{
+        pl, err := ParsePayload(eventName, raw)
+        if err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("parse payload: %v", err)
+        }</span>
+        <span class="cov0" title="0">return p.Send(eventName, pl)</span>
+}
+
+// calls error handler for each error message from error channel
+// closes stopped channel for gracefully error handling stop
+func (p Producer) serveErrorChannel() <span class="cov8" title="1">{
+        for perr := range p.asyncProducer.Errors() </span><span class="cov8" title="1">{
+                if perr == nil || perr.Msg == nil </span><span class="cov8" title="1">{
+                        logrus.Error("empty producer error")
+                        continue</span>
+                }
+
+                <span class="cov8" title="1">p.errhan(perr)
+
+                if err := p.fallback.Send(perr.Msg); err != nil </span><span class="cov0" title="0">{
+                        logrus.WithFields(map[string]interface{}{
+                                "kafka_topic":    perr.Msg.Topic,
+                                "kafka_msg":      perr.Msg.Value,
+                                "producer_error": perr.Error(),
+                                "error":          err.Error(),
+                        }).Error("Kafka: can't use fallback")
+                }</span>
+        }
+}
+
+// serve success channel, allows triger handler for postprocessing action
+func (p Producer) serveSuccessChannel() <span class="cov8" title="1">{
+        for msg := range p.asyncProducer.Successes() </span><span class="cov8" title="1">{
+                p.scchan(msg)
+        }</span>
+}
+
+// Close commits all offset and close input channels,
+// waits until the stopped channel was closed.
+func (p Producer) Close() error <span class="cov8" title="1">{
+        var result error
+        // closing async producer ensure that all queued messages was send
+        if err := p.asyncProducer.Close(); err != nil </span><span class="cov0" title="0">{
+                result = multierror.Append(result, fmt.Errorf("close async producer: %v", err))
+        }</span>
+
+        <span class="cov8" title="1">p.wg.Wait()
+
+        // closing the fallback controller before the sync producer
+        // ensures the correct completion of the resend task
+        if err := p.fallback.Close(); err != nil </span><span class="cov0" title="0">{
+                result = multierror.Append(result, fmt.Errorf("close fallback controller: %v", err))
+        }</span>
+        <span class="cov8" title="1">if err := p.syncProducer.Close(); err != nil </span><span class="cov0" title="0">{
+                result = multierror.Append(result, fmt.Errorf("close sync producer: %v", err))
+        }</span>
+
+        <span class="cov8" title="1">return result</span>
+}
+
+// send message to specific topic with partition key, key can be nil
+func (p Producer) send(t Topic, key sarama.Encoder, v interface{}) error <span class="cov8" title="1">{
+        msg := &amp;sarama.ProducerMessage{
+                Topic: t.String(),
+                Key:   key,
+                Value: &amp;jsonEncoder{entity: v},
+        }
+
+        timeout := time.NewTimer(100 * time.Millisecond)
+        defer timeout.Stop()
+
+        select </span>{
+        case p.asyncProducer.Input() &lt;- msg:<span class="cov8" title="1">
+                return nil</span>
+        case &lt;-timeout.C:<span class="cov0" title="0">
+                logrus.Error("Estream: async producer channel is full, send to fallback")
+                return p.fallback.Send(msg)</span>
+        }
+}
+
+func (p Producer) validate() error <span class="cov8" title="1">{
+        if p.newAsyncProducer == nil </span><span class="cov8" title="1">{
+                return fmt.Errorf("create kafka sender func not defined")
+        }</span>
+
+        <span class="cov8" title="1">if p.newSyncProducer == nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("create kafka sync producer func not defined")
+        }</span>
+
+        <span class="cov8" title="1">if p.config.Producer.Return.Errors &amp;&amp; p.errhan == nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("missing error handler")
+        }</span>
+
+        <span class="cov8" title="1">if p.config.Producer.Return.Successes &amp;&amp; p.scchan == nil </span><span class="cov8" title="1">{
+                return fmt.Errorf("missing success handler")
+        }</span>
+        <span class="cov8" title="1">return nil</span>
+}
+
+func randomUUID() string <span class="cov8" title="1">{
+        uid, err := uuid.NewRandom()
+        if err != nil </span><span class="cov0" title="0">{
+                logrus.Errorf("Generate UUID: %s", err)
+                return fmt.Sprintf("fail:%d", time.Now().Unix())
+        }</span>
+        <span class="cov8" title="1">return uid.String()</span>
+}
+</pre>
+		
+		<pre class="file" id="file11" style="display: none">package estream
+
+// Topic is kafka topic name
+type Topic string
+
+// String returns topic name as a string
+func (t Topic) String() string <span class="cov8" title="1">{
+        return string(t)
+}</span>
+
+// Deals topics
+const (
+        // TopicDealBoReal contains events of BO real deals
+        TopicDealBoReal Topic = "deal.bo.real"
+        // TopicDealBoDemo contains events of BO demo deals
+        TopicDealBoDemo Topic = "deal.bo.demo"
+        // TopicDealFxReal contains events of FX real deals
+        TopicDealFxReal Topic = "deal.fx.real"
+        // TopicDealFxRealMarket contains event of FX market deals
+        TopicDealFxRealMarket Topic = "deal.fx.real.market"
+        // TopicDealFxDemo contains events of FX demo deals
+        TopicDealFxDemo Topic = "deal.fx.demo"
+        // TopicUserOptions contains events about change options
+        TopicUserOptions Topic = "user.options"
+        // TopicUser contains events about user changes
+        TopicUser Topic = "user"
+        // TopicUserRisks contains events about user changes
+        TopicUserRisks Topic = "user.risks"
+        // TopicDormant contains events about dormant fee
+        TopicDormant Topic = "dormant"
+        // TopicBilling contains events about billing request / pays / payouts
+        TopicBilling Topic = "billing"
+        // TopicBalance contains events about balance
+        TopicBalance Topic = "balance"
+        //TopicUserLevels contains events connected to service levels
+        TopicUserLevels Topic = "user.levels"
+        //TopicAppsflyerPush contains push events from appsflyer
+        TopicAppsflyerPush = "appsflyer.push"
+)
+</pre>
+		
+		</div>
+	</body>
+	<script>
+	(function() {
+		var files = document.getElementById('files');
+		var visible;
+		files.addEventListener('change', onChange, false);
+		function select(part) {
+			if (visible)
+				visible.style.display = 'none';
+			visible = document.getElementById(part);
+			if (!visible)
+				return;
+			files.value = part;
+			visible.style.display = 'block';
+			location.hash = part;
+		}
+		function onChange() {
+			select(files.value);
+			window.scrollTo(0, 0);
+		}
+		if (location.hash != "") {
+			select(location.hash.substr(1));
+		}
+		if (!visible) {
+			select("file0");
+		}
+	})();
+	</script>
+</html>
