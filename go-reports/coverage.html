@@ -56,11 +56,11 @@
 				
 				<option value="file0">bitbucket.manperi.com/olymp/estream/config.go (93.5%)</option>
 				
-				<option value="file1">bitbucket.manperi.com/olymp/estream/consumer.go (0.0%)</option>
+				<option value="file1">bitbucket.manperi.com/olymp/estream/consumer.go (75.9%)</option>
 				
 				<option value="file2">bitbucket.manperi.com/olymp/estream/consumer_group.go (56.2%)</option>
 				
-				<option value="file3">bitbucket.manperi.com/olymp/estream/consumer_handler.go (0.0%)</option>
+				<option value="file3">bitbucket.manperi.com/olymp/estream/consumer_handler.go (12.5%)</option>
 				
 				<option value="file4">bitbucket.manperi.com/olymp/estream/consumer_handler_gen.go (13.3%)</option>
 				
@@ -185,12 +185,12 @@ import (
 )
 
 var (
-        defaultConsumerNewClientFunc = func(addrs []string, cfg *sarama.Config) (sarama.Client, error) <span class="cov0" title="0">{
+        defaultConsumerNewClientFunc = func(addrs []string, cfg *sarama.Config) (sarama.Client, error) <span class="cov8" title="1">{
                 return sarama.NewClient(addrs, cfg)
         }</span>
 
-        defaultConsumerErrorHandler = func(err error) <span class="cov0" title="0">{
-                if err != nil </span><span class="cov0" title="0">{
+        defaultConsumerErrorHandler = func(err error) <span class="cov8" title="1">{
+                if err != nil </span><span class="cov8" title="1">{
                         logrus.Errorf("Kafka: consumer error: %s", err.Error())
                 }</span>
         }
@@ -200,22 +200,22 @@ var (
 type ConsumerOpt func(c *Consumer)
 
 // WithClientFuncConsumerOpt sets factory func for create kafka client, may be used for redefine sarama config settings
-func WithClientFuncConsumerOpt(f func(addrs []string, cfg *sarama.Config) (sarama.Client, error)) ConsumerOpt <span class="cov0" title="0">{
-        return func(c *Consumer) </span><span class="cov0" title="0">{
+func WithClientFuncConsumerOpt(f func(addrs []string, cfg *sarama.Config) (sarama.Client, error)) ConsumerOpt <span class="cov8" title="1">{
+        return func(c *Consumer) </span><span class="cov8" title="1">{
                 c.clientFunc = f
         }</span>
 }
 
 // WithConfigConsumerOpt sets config for consumer
-func WithConfigConsumerOpt(cfg *sarama.Config) ConsumerOpt <span class="cov0" title="0">{
-        return func(c *Consumer) </span><span class="cov0" title="0">{
+func WithConfigConsumerOpt(cfg *sarama.Config) ConsumerOpt <span class="cov8" title="1">{
+        return func(c *Consumer) </span><span class="cov8" title="1">{
                 c.config = cfg
         }</span>
 }
 
 // WithErrorHandlerConsumerOpt sets error handler for consumers
-func WithErrorHandlerConsumerOpt(f func(error)) ConsumerOpt <span class="cov0" title="0">{
-        return func(c *Consumer) </span><span class="cov0" title="0">{
+func WithErrorHandlerConsumerOpt(f func(error)) ConsumerOpt <span class="cov8" title="1">{
+        return func(c *Consumer) </span><span class="cov8" title="1">{
                 c.errhan = f
         }</span>
 }
@@ -234,7 +234,7 @@ type Consumer struct {
 }
 
 // NewConsumer returns consumer instance
-func NewConsumer(cfg Config, opts ...ConsumerOpt) (*Consumer, error) <span class="cov0" title="0">{
+func NewConsumer(cfg Config, opts ...ConsumerOpt) (*Consumer, error) <span class="cov8" title="1">{
         c := &amp;Consumer{
                 addrs:      cfg.Addresses,
                 config:     NewSaramaConfig(),
@@ -243,74 +243,74 @@ func NewConsumer(cfg Config, opts ...ConsumerOpt) (*Consumer, error) <span class
                 handlers:   make(map[Topic]*topicConsumer),
         }
 
-        for _, opt := range opts </span><span class="cov0" title="0">{
+        for _, opt := range opts </span><span class="cov8" title="1">{
                 opt(c)
         }</span>
 
-        <span class="cov0" title="0">if c.clientFunc == nil </span><span class="cov0" title="0">{
+        <span class="cov8" title="1">if c.clientFunc == nil </span><span class="cov8" title="1">{
                 return nil, fmt.Errorf("missing new client func")
         }</span>
 
-        <span class="cov0" title="0">if c.config == nil </span><span class="cov0" title="0">{
+        <span class="cov8" title="1">if c.config == nil </span><span class="cov8" title="1">{
                 return nil, fmt.Errorf("missing consumer config")
         }</span>
 
-        <span class="cov0" title="0">if c.errhan == nil </span><span class="cov0" title="0">{
+        <span class="cov8" title="1">if c.errhan == nil </span><span class="cov8" title="1">{
                 return nil, fmt.Errorf("missing error handler")
         }</span>
 
-        <span class="cov0" title="0">var err error
+        <span class="cov8" title="1">var err error
         c.client, err = c.clientFunc(cfg.Addresses, c.config)
-        if err != nil </span><span class="cov0" title="0">{
+        if err != nil </span><span class="cov8" title="1">{
                 return nil, fmt.Errorf("create kafka consumer: %v", err)
         }</span>
 
-        <span class="cov0" title="0">c.consumer, err = sarama.NewConsumerFromClient(c.client)
-        if err != nil </span><span class="cov0" title="0">{
+        <span class="cov8" title="1">c.consumer, err = sarama.NewConsumerFromClient(c.client)
+        if err != nil </span><span class="cov8" title="1">{
                 return nil, fmt.Errorf("create kafka consumer: %v", err)
         }</span>
 
-        <span class="cov0" title="0">return c, nil</span>
+        <span class="cov8" title="1">return c, nil</span>
 }
 
 // Consume starts consumers
-func (c *Consumer) Consume() error <span class="cov0" title="0">{
-        for topic, topicHandler := range c.handlers </span><span class="cov0" title="0">{
+func (c *Consumer) Consume() error <span class="cov8" title="1">{
+        for topic, topicHandler := range c.handlers </span><span class="cov8" title="1">{
                 if err := c.consumeTopic(topic, topicHandler); err != nil </span><span class="cov0" title="0">{
                         return fmt.Errorf("start consumer for topic %s timeOffset %s: %v", topic, topicHandler.minTimeOffset, err)
                 }</span>
         }
-        <span class="cov0" title="0">return nil</span>
+        <span class="cov8" title="1">return nil</span>
 }
 
 // Close stops all partition consumers, waits until all workers stooped,
 // closes consumer and client
-func (c *Consumer) Close() error <span class="cov0" title="0">{
-        for _, pc := range c.partsConsumers </span><span class="cov0" title="0">{
+func (c *Consumer) Close() error <span class="cov8" title="1">{
+        for _, pc := range c.partsConsumers </span><span class="cov8" title="1">{
                 if err := pc.Close(); err != nil </span><span class="cov0" title="0">{
                         c.errhan(fmt.Errorf("stop partition consumer: %v", err))
                 }</span>
         }
-        <span class="cov0" title="0">c.wg.Wait()
+        <span class="cov8" title="1">c.wg.Wait()
 
         if err := c.consumer.Close(); err != nil </span><span class="cov0" title="0">{
                 return fmt.Errorf("close consumer: %v", err)
         }</span>
-        <span class="cov0" title="0">if err := c.client.Close(); err != nil </span><span class="cov0" title="0">{
+        <span class="cov8" title="1">if err := c.client.Close(); err != nil </span><span class="cov0" title="0">{
                 return fmt.Errorf("close kafka client: %v", err)
         }</span>
 
-        <span class="cov0" title="0">return nil</span>
+        <span class="cov8" title="1">return nil</span>
 }
 
 // AddHandler adds handler for event
-func (c *Consumer) AddHandler(eventName string, h saramaHandler, opts ...ConsumerHandlerOpt) error <span class="cov0" title="0">{
+func (c *Consumer) AddHandler(eventName string, h saramaHandler, opts ...ConsumerHandlerOpt) error <span class="cov8" title="1">{
         t, ok := eventTopic[eventName]
         if !ok </span><span class="cov0" title="0">{
                 return ErrUnsupportedEvent
         }</span>
 
-        <span class="cov0" title="0">tc := timeOffsetConsumer{
+        <span class="cov8" title="1">tc := timeOffsetConsumer{
                 eventName:  eventName,
                 timeOffset: time.Time{},
                 handler:    h.saramaHandler(),
@@ -320,26 +320,26 @@ func (c *Consumer) AddHandler(eventName string, h saramaHandler, opts ...Consume
                 opt(&amp;tc)
         }</span>
 
-        <span class="cov0" title="0">if _, ok := c.handlers[t]; !ok </span><span class="cov0" title="0">{
+        <span class="cov8" title="1">if _, ok := c.handlers[t]; !ok </span><span class="cov8" title="1">{
                 c.handlers[t] = &amp;topicConsumer{}
         }</span>
 
-        <span class="cov0" title="0">c.handlers[t].addHandler(tc)
+        <span class="cov8" title="1">c.handlers[t].addHandler(tc)
 
         return nil</span>
 }
 
-func (c *Consumer) consumeTopic(topic Topic, tconsumer *topicConsumer) error <span class="cov0" title="0">{
+func (c *Consumer) consumeTopic(topic Topic, tconsumer *topicConsumer) error <span class="cov8" title="1">{
         parts, err := c.client.Partitions(topic.String())
         if err != nil </span><span class="cov0" title="0">{
                 return fmt.Errorf("get topic %s partitions: %v", topic, err)
         }</span>
 
-        <span class="cov0" title="0">if len(parts) == 0 </span><span class="cov0" title="0">{
+        <span class="cov8" title="1">if len(parts) == 0 </span><span class="cov0" title="0">{
                 return fmt.Errorf("no one partition for topic: %s", topic)
         }</span>
 
-        <span class="cov0" title="0">for _, part := range parts </span><span class="cov0" title="0">{
+        <span class="cov8" title="1">for _, part := range parts </span><span class="cov8" title="1">{
                 offset := c.config.Consumer.Offsets.Initial
                 if !tconsumer.minTimeOffset.IsZero() </span><span class="cov0" title="0">{
                         offset, err = c.client.GetOffset(topic.String(), part, tconsumer.minTimeOffset.UnixNano()/int64(time.Millisecond))
@@ -354,15 +354,15 @@ func (c *Consumer) consumeTopic(topic Topic, tconsumer *topicConsumer) error <sp
                         }</span>
                 }
 
-                <span class="cov0" title="0">pc, err := c.consumer.ConsumePartition(topic.String(), part, offset)
+                <span class="cov8" title="1">pc, err := c.consumer.ConsumePartition(topic.String(), part, offset)
                 if err != nil </span><span class="cov0" title="0">{
                         return fmt.Errorf("consume topic %s partition %d offset %d: %v", topic.String(), part, offset, err)
                 }</span>
 
-                <span class="cov0" title="0">c.consumePartition(topic.String(), part, pc, tconsumer.handle)</span>
+                <span class="cov8" title="1">c.consumePartition(topic.String(), part, pc, tconsumer.handle)</span>
         }
 
-        <span class="cov0" title="0">return nil</span>
+        <span class="cov8" title="1">return nil</span>
 }
 
 func (c *Consumer) consumePartition(
@@ -370,10 +370,10 @@ func (c *Consumer) consumePartition(
         part int32,
         pc sarama.PartitionConsumer,
         handler func(msg *sarama.ConsumerMessage) error,
-) <span class="cov0" title="0">{
+) <span class="cov8" title="1">{
         c.partsConsumers = append(c.partsConsumers, pc)
 
-        c.wg.Add(func() </span><span class="cov0" title="0">{
+        c.wg.Add(func() </span><span class="cov8" title="1">{
                 for msg := range pc.Messages() </span><span class="cov0" title="0">{
                         start := time.Now()
 
@@ -388,9 +388,9 @@ func (c *Consumer) consumePartition(
                 }
         })
 
-        <span class="cov0" title="0">if c.config.Consumer.Return.Errors </span><span class="cov0" title="0">{
-                c.wg.Add(func() </span><span class="cov0" title="0">{
-                        for err := range pc.Errors() </span><span class="cov0" title="0">{
+        <span class="cov8" title="1">if c.config.Consumer.Return.Errors </span><span class="cov8" title="1">{
+                c.wg.Add(func() </span><span class="cov8" title="1">{
+                        for err := range pc.Errors() </span><span class="cov8" title="1">{
                                 c.errhan(fmt.Errorf("kafka: consume topic %s partition %d : %v", topic, part, err))
                         }</span>
                 })
@@ -667,10 +667,10 @@ type topicConsumer struct {
         handlers      []timeOffsetConsumer
 }
 
-func (t *topicConsumer) addHandler(h timeOffsetConsumer) <span class="cov0" title="0">{
+func (t *topicConsumer) addHandler(h timeOffsetConsumer) <span class="cov8" title="1">{
         t.handlers = append(t.handlers, h)
 
-        if h.timeOffset.IsZero() </span><span class="cov0" title="0">{
+        if h.timeOffset.IsZero() </span><span class="cov8" title="1">{
                 return
         }</span>
 
