@@ -47,14 +47,12 @@ $coverage->setData(array (
   array (
     7 => 
     array (
-      0 => 'Test::testExample',
     ),
     8 => 
     array (
     ),
     11 => 
     array (
-      0 => 'Test::testExample',
     ),
     13 => NULL,
   ),
@@ -64,11 +62,6 @@ $coverage->setTests(array (
   array (
     'size' => 'unknown',
     'status' => -1,
-  ),
-  'Test::testExample' => 
-  array (
-    'size' => 'unknown',
-    'status' => 0,
   ),
 ));
 
